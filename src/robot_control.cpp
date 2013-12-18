@@ -40,12 +40,11 @@ void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
         }
 }
 
-
 RobotControl::RobotControl()
 {
     //initializing variables
     //database
-  db_connect_ = notConnected;
+    db_connect_ = notConnected;
   //kobuki_base
     led1_pub = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led1",10);
     led2_pub_ = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led2",10);
@@ -63,7 +62,6 @@ RobotControl::RobotControl()
     ROS_INFO("Created robot_control");
 }
 
-
 int RobotControl::run()
 {
   ROS_INFO("RobotControl started running");
@@ -75,12 +73,6 @@ int RobotControl::run()
           std_srvs::Empty empty;
           map_loc_.call(empty);
           ros::Duration(5).sleep();
-//          turtlebot_msgs::TakePanorama pano;
-//          pano.request.mode = 0;
-//          pano.request.pano_angle = 360;
-//          pano.request.snap_interval = 5;
-//          pano.request.rot_vel = 0.1;
-//          take_pano_.call(pano);
           fullTurn();
       }
 
@@ -88,7 +80,6 @@ int RobotControl::run()
       r.sleep();
   }
 }
-
 
 int RobotControl::fullTurn()
 {
