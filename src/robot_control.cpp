@@ -43,9 +43,9 @@ void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
 RobotControl::RobotControl()
 {
     //initializing variables
-    //database
+    //databaset
     db_connect_ = notConnected;
-  //kobuki_base
+    // initialize kobuki_base with buttons, leds and sounds
     led1_pub = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led1",10);
     led2_pub_ = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led2",10);
     kob_sound_ = n_.advertise<kobuki_msgs::Sound>("/mobile_base/commands/sound",10);
@@ -67,28 +67,32 @@ int RobotControl::run()
   ROS_INFO("RobotControl started running");
   ros::Rate r(10);
   while (ros::ok())
-   {
-      //do self localization if button0 is pressed
-      if (button0_) {
-          std_srvs::Empty empty;
-          map_loc_.call(empty);
-          ros::Duration(5).sleep();
-          fullTurn();
-      }
+  {
+    //do self localization if button0 is pressed
+    if (button0_) 
+    {
+      std_srvs::Empty empty;
+      map_loc_.call(empty);
+      ros::Duration(5).sleep();
+      //TODO: it shouldn't block the main-loop
+      fullTurn();
+    }
 
-      ros::spinOnce();
-      r.sleep();
+    ros::spinOnce();
+    r.sleep();
   }
 }
 
 int RobotControl::fullTurn()
 {
-
+  //make a move_base client to be able to send goals
   MoveBaseClient ac_ ("move_base",true);
-  while(!ac_.waitForServer(ros::Duration(5.0))){
+  while(!ac_.waitForServer(ros::Duration(5.0)))
+  {
     ROS_INFO("Waiting for the move_base action server to come up");
   }
   move_base_msgs::MoveBaseGoal goal_;
+  // target frame is base_link, because we want to turn around ourselves
   goal_.target_pose.header.frame_id = "base_link";
   goal_.target_pose.header.stamp = ros::Time::now();
 
@@ -97,12 +101,12 @@ int RobotControl::fullTurn()
   goal_.target_pose.pose.orientation.w = 0.9238;
   goal_.target_pose.pose.orientation.z = -0.3826;
   for ( int i = 0; i < 8; i++)
-    {
-      ROS_INFO("Sending goal nr %i",i+1);
-      ac_.sendGoal(goal_);
-      ac_.waitForResult();
-      ros::Duration(7).sleep();
-    }
+  {
+    ROS_INFO("Sending goal nr %i",i+1);
+    ac_.sendGoal(goal_);
+    ac_.waitForResult();
+    ros::Duration(7).sleep();
+  }
 //  ROS_INFO("Waiting for results");
 //  ac_.waitForResult();
 
