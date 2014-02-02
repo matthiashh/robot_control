@@ -18,6 +18,13 @@ int main(int argc, char** argv){
     return 0;
 }
 
+void RobotControl::TaskServerCallback_(const robot_control::RobotTaskActionGoalConstPtr new_goal)
+{
+  ROS_INFO("WOHO - A new Goal");
+  TaskServerResult_.result = "woho";
+  TaskServer_->setSucceeded(TaskServerResult_);
+}
+
 void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
         ROS_INFO("Received buttons event of button [%i] with state [%i]",button.button,button.state );
         //Changing class variables in order to the button event
@@ -43,7 +50,12 @@ void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
 RobotControl::RobotControl()
 {
     //initializing variables
-    //databaset
+    //actionserver
+    TaskServer_ = new actionlib::SimpleActionServer<robot_control::RobotTaskAction>(n_,"robot_control",boost::bind(&RobotControl::TaskServerCallback_, this, _1),true);
+//    TaskServer_->registerGoalCallback(boost::bind(&RobotControl::TaskServerGoalCallback_, this));
+//    TaskServer_->registerPreemptCallback(boost::bind(&RobotControl::TaskServerGoalCallback,this));
+//    subTaskTopic_ = n_.subscribe("/robot_control/task_server",1,&RobotControl::TaskServerAnalysisCallback,this);
+    //database
     db_connect_ = notConnected;
     // initialize kobuki_base with buttons, leds and sounds
     led1_pub = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led1",10);
@@ -55,6 +67,7 @@ RobotControl::RobotControl()
     button2_ = false;
     led1_.value = 0;
     led2_.value = 0;
+    robot_control_mode = manual;
     //map and localization
     map_loc_ = n_.serviceClient<std_srvs::Empty>("/global_localization");
     //taking panorama

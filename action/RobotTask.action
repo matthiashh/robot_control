@@ -1,0 +1,10 @@
+# Define the task
+uint32 task_id
+string task_name
+uint32 priority
+---
+# Define the result
+string result
+---
+# Define a feedback message
+string intermediate_result

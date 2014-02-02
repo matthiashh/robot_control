@@ -5,26 +5,46 @@
 #include <kobuki_msgs/Led.h>            //needed for kobuki led handling
 #include <move_base_msgs/MoveBaseAction.h>          //needed for navigation_goals
 #include <actionlib/client/simple_action_client.h>  //needed for navigation_goals
+#include <actionlib/server/simple_action_server.h>
+#include <robot_control/RobotTaskAction.h>
 #include <std_srvs/Empty.h>
 #include <std_msgs/Empty.h>
 
 //general connection enom, used for database_connection
-enum connection_status {
+enum connectionStatus
+{
     connected,
-    buildConnect,
-    lostConnect,
+    buildConnection,
+    lostConnection,
     notConnected
 };
+
+enum robotMode
+{
+  database,
+  speechControlled,
+  manual
+};
+
 
 //needed for navigation goals
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
+
 class RobotControl
 {
 private:
+    //ros-stuff
     ros::NodeHandle n_;
+    // ActionServer
+    actionlib::SimpleActionServer<robot_control::RobotTaskAction>* TaskServer_;
+    void TaskServerCallback_(const robot_control::RobotTaskActionGoalConstPtr new_goal);
+    robot_control::RobotTaskActionResult TaskServerResult_;
+    robot_control::RobotTaskActionFeedback TaskServerFeedback_;
+
+
     //database
-    connection_status db_connect_;
+    connectionStatus db_connect_;
     //kobuki_base
     ros::Subscriber button_;
     ros::Publisher led1_pub;
@@ -36,6 +56,7 @@ private:
     bool button0_;
     bool button1_;
     bool button2_;
+    robotMode robot_control_mode;
 
     //localization and map
     ros::ServiceClient map_loc_;
