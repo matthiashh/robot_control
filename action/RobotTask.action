@@ -4,7 +4,7 @@ string task_name
 uint32 priority
 ---
 # Define the result
-string result
+string end_result
 ---
 # Define a feedback message
 string intermediate_result

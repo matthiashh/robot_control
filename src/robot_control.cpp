@@ -6,23 +6,25 @@
 #include <turtlebot_msgs/TakePanorama.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
+#include <actionlib/server/simple_action_server.h>
+
 
 //needed for setting navigation goals
 //typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 int main(int argc, char** argv){
     ros::init(argc, argv, "robot_control");
-    RobotControl mainControl;
+    RobotControl mainControl("robot_control");
     //run-function is never exited
     mainControl.run();
     return 0;
 }
 
-void RobotControl::TaskServerCallback_(const robot_control::RobotTaskActionGoalConstPtr new_goal)
+void RobotControl::TaskServerCallback_(const robot_control::RobotTaskGoalConstPtr &goal)
 {
   ROS_INFO("WOHO - A new Goal");
-  TaskServerResult_.result = "woho";
-  TaskServer_->setSucceeded(TaskServerResult_);
+  TaskServerResult_.result.end_result = "woho";
+  //TaskServer_->setSucceeded(TaskServerResult_);
 }
 
 void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
@@ -47,12 +49,13 @@ void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
         }
 }
 
-RobotControl::RobotControl()
+RobotControl::RobotControl(std::string name) :
+  TaskServer_ (n_,name,boost::bind(&RobotControl::TaskServerCallback_, this, _1),false)
+
 {
     //initializing variables
     //actionserver
-    TaskServer_ = new actionlib::SimpleActionServer<robot_control::RobotTaskAction>(n_,"robot_control",boost::bind(&RobotControl::TaskServerCallback_, this, _1),true);
-//    TaskServer_->registerGoalCallback(boost::bind(&RobotControl::TaskServerGoalCallback_, this));
+      //    TaskServer_->registerGoalCallback(boost::bind(&RobotControl::TaskServerGoalCallback_, this));
 //    TaskServer_->registerPreemptCallback(boost::bind(&RobotControl::TaskServerGoalCallback,this));
 //    subTaskTopic_ = n_.subscribe("/robot_control/task_server",1,&RobotControl::TaskServerAnalysisCallback,this);
     //database
@@ -74,6 +77,7 @@ RobotControl::RobotControl()
     take_pano_ = n_.serviceClient<turtlebot_msgs::TakePanorama>("/turtlebot_panorama/take_pano");
     ROS_INFO("Created robot_control");
 }
+
 
 int RobotControl::run()
 {

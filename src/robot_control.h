@@ -37,8 +37,8 @@ private:
     //ros-stuff
     ros::NodeHandle n_;
     // ActionServer
-    actionlib::SimpleActionServer<robot_control::RobotTaskAction>* TaskServer_;
-    void TaskServerCallback_(const robot_control::RobotTaskActionGoalConstPtr new_goal);
+    actionlib::SimpleActionServer<robot_control::RobotTaskAction> TaskServer_;
+
     robot_control::RobotTaskActionResult TaskServerResult_;
     robot_control::RobotTaskActionFeedback TaskServerFeedback_;
 
@@ -65,7 +65,8 @@ private:
     ros::ServiceClient take_pano_;
 
 public:
-    RobotControl();
+    RobotControl(std::string name);
+    void TaskServerCallback_(const robot_control::RobotTaskGoalConstPtr &goal);
     int run();
 };
 
