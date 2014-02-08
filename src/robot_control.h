@@ -9,23 +9,26 @@
 #include <robot_control/RobotTaskAction.h>
 #include <std_srvs/Empty.h>
 #include <std_msgs/Empty.h>
+#include <std_msgs/Time.h>
+#include <database_binding/DatabaseConnection.h>    //to process the database connection messages
 
 //general connection enom, used for database_connection
-enum connectionStatus
+namespace robot_control
 {
-    connected,
-    buildConnection,
-    lostConnection,
-    notConnected
-};
+    enum connectionStatus
+  {
+      connected,
+      unsure,
+      notConnected
+  };
 
-enum robotMode
-{
-  database,
-  speechControlled,
-  manual
-};
-
+  enum robotMode
+  {
+    database,
+    speechControlled,
+    manual
+  };
+}
 
 //needed for navigation goals
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
@@ -38,13 +41,19 @@ private:
     ros::NodeHandle n_;
     // ActionServer
     actionlib::SimpleActionServer<robot_control::RobotTaskAction> TaskServer_;
+    actionlib::SimpleActionClient<robot_control::RobotTaskAction> TaskClient_;
 
     robot_control::RobotTaskActionResult TaskServerResult_;
     robot_control::RobotTaskActionFeedback TaskServerFeedback_;
 
+    //test-function
+    void test_server();
 
     //database
-    connectionStatus db_connect_;
+    robot_control::connectionStatus db_connect_;
+    std_msgs::Time db_connect_last_update;
+    ros::Subscriber connection_state_sub_;
+    void connectionCallback (const database_binding::DatabaseConnection &state);
     //kobuki_base
     ros::Subscriber button_;
     ros::Publisher led1_pub;
@@ -56,7 +65,7 @@ private:
     bool button0_;
     bool button1_;
     bool button2_;
-    robotMode robot_control_mode;
+    robot_control::robotMode robot_control_mode;
 
     //localization and map
     ros::ServiceClient map_loc_;

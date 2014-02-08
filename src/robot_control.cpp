@@ -27,6 +27,29 @@ void RobotControl::TaskServerCallback_(const robot_control::RobotTaskGoalConstPt
   //TaskServer_->setSucceeded(TaskServerResult_);
 }
 
+void RobotControl::connectionCallback(const database_binding::DatabaseConnection &state)
+{
+  if (state.connection == 0)
+  {
+    db_connect_ = robot_control::connected;
+    led2_.value = led2_.GREEN;
+    led2_pub_.publish(led2_);
+  }
+  else if (state.connection == 1)
+  {
+    db_connect_ = robot_control::unsure;
+    led2_.value = led2_.ORANGE;
+    led2_pub_.publish(led2_);
+  }
+  else
+  {
+    db_connect_ = robot_control::notConnected;
+    led2_.value = led2_.RED;
+    led2_pub_.publish(led2_);
+  }
+  db_connect_last_update.data = state.header.stamp;
+}
+
 void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
         ROS_INFO("Received buttons event of button [%i] with state [%i]",button.button,button.state );
         //Changing class variables in order to the button event
@@ -40,17 +63,36 @@ void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
             }
         } else {
             switch (button.button) {
-            case 0 : button0_ = false;
-                break;
-            case 1: button1_ = false;
-                break;
-            case 2: button2_ = false;
+            case 0 :
+                {
+                  button0_ = false;
+                  robot_control_mode = robot_control::database;
+                  led1_.value = led1_.GREEN;
+                  led1_pub.publish(led1_);
+                  break;
+                }
+            case 1:
+                {
+                  button1_ = false;
+                  robot_control_mode = robot_control::speechControlled;
+                  led1_.value = led1_.ORANGE;
+                  led1_pub.publish(led1_);
+                  break;
+                }
+            case 2:
+                {
+                  button2_ = false;
+                  robot_control_mode = robot_control::manual;
+                  led1_.value = led1_.RED;
+                  led1_pub.publish(led1_);
+                }
             }
         }
 }
 
 RobotControl::RobotControl(std::string name) :
-  TaskServer_ (n_,name,boost::bind(&RobotControl::TaskServerCallback_, this, _1),false)
+  TaskServer_ (n_,name,boost::bind(&RobotControl::TaskServerCallback_, this, _1),false),
+  TaskClient_ ("robot_control",true)
 
 {
     //initializing variables
@@ -59,7 +101,8 @@ RobotControl::RobotControl(std::string name) :
 //    TaskServer_->registerPreemptCallback(boost::bind(&RobotControl::TaskServerGoalCallback,this));
 //    subTaskTopic_ = n_.subscribe("/robot_control/task_server",1,&RobotControl::TaskServerAnalysisCallback,this);
     //database
-    db_connect_ = notConnected;
+    db_connect_ = robot_control::notConnected;
+    connection_state_sub_ = n_.subscribe("/database_binding/connection_status", 10, &RobotControl::connectionCallback, this);
     // initialize kobuki_base with buttons, leds and sounds
     led1_pub = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led1",10);
     led2_pub_ = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led2",10);
@@ -68,9 +111,11 @@ RobotControl::RobotControl(std::string name) :
     button0_ = false;
     button1_ = false;
     button2_ = false;
-    led1_.value = 0;
-    led2_.value = 0;
-    robot_control_mode = manual;
+    robot_control_mode = robot_control::manual;
+    led1_.value = led1_.RED;
+    led2_.value = led2_.RED;
+    led1_pub.publish(led1_);
+    led2_pub_.publish(led2_);
     //map and localization
     map_loc_ = n_.serviceClient<std_srvs::Empty>("/global_localization");
     //taking panorama
@@ -86,15 +131,26 @@ int RobotControl::run()
   while (ros::ok())
   {
     //do self localization if button0 is pressed
-    if (button0_) 
-    {
-      std_srvs::Empty empty;
-      map_loc_.call(empty);
-      ros::Duration(5).sleep();
-      //TODO: it shouldn't block the main-loop
-      fullTurn();
-    }
-
+//    if (button0_)
+//    {
+//      std_srvs::Empty empty;
+//      map_loc_.call(empty);
+//      ros::Duration(5).sleep();
+//      //TODO: it shouldn't block the main-loop
+//      fullTurn();
+//    }
+      if ((ros::Time::now()-db_connect_last_update.data).toSec() > 30)
+        {
+          db_connect_ = robot_control::notConnected;
+          led2_.value = led2_.RED;
+          led2_pub_.publish(led2_);
+        }
+      else if ((ros::Time::now()-db_connect_last_update.data).toSec() > 15)
+        {
+          db_connect_ = robot_control::unsure;
+          led2_.value = led2_.ORANGE;
+          led2_pub_.publish(led2_);
+        }
     ros::spinOnce();
     r.sleep();
   }
