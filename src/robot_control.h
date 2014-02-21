@@ -30,9 +30,9 @@ namespace robot_control
   };
 }
 
-//needed for navigation goals
+//needed for actionserver
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
-
+typedef actionlib::ActionServer<robot_control::RobotTaskAction> TaskServer_;
 
 class RobotControl
 {
@@ -40,12 +40,17 @@ private:
     //ros-stuff
     ros::NodeHandle n_;
     // ActionServer
-    actionlib::SimpleActionServer<robot_control::RobotTaskAction> TaskServer_;
-    actionlib::SimpleActionClient<robot_control::RobotTaskAction> TaskClient_;
+    actionlib::ActionServer<robot_control::RobotTaskAction> TaskServer_;
+    actionlib::ActionClient<robot_control::RobotTaskAction> TaskClient_;
 
     robot_control::RobotTaskActionResult TaskServerResult_;
     robot_control::RobotTaskActionFeedback TaskServerFeedback_;
 
+    robot_control::RobotTaskGoal goal_;
+    TaskServer_::GoalHandle current_gh_;
+
+    void TaskServerGoalCallback_(TaskServer_::GoalHandle gh);
+    void TaskServerPreemptCallback_(TaskServer_::GoalHandle gh);
     //test-function
     void test_server();
 
@@ -53,7 +58,7 @@ private:
     robot_control::connectionStatus db_connect_;
     std_msgs::Time db_connect_last_update;
     ros::Subscriber connection_state_sub_;
-    void connectionCallback (const database_binding::DatabaseConnection &state);
+    void connectionCallback_ (const database_binding::DatabaseConnection &state);
     //kobuki_base
     ros::Subscriber button_;
     ros::Publisher led1_pub;
@@ -75,7 +80,6 @@ private:
 
 public:
     RobotControl(std::string name);
-    void TaskServerCallback_(const robot_control::RobotTaskGoalConstPtr &goal);
     int run();
 };
 

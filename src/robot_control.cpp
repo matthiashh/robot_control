@@ -5,9 +5,8 @@
 #include "robot_control.h"
 #include <turtlebot_msgs/TakePanorama.h>
 #include <move_base_msgs/MoveBaseAction.h>
-#include <actionlib/client/simple_action_client.h>
-#include <actionlib/server/simple_action_server.h>
-
+#include <actionlib/client/action_client.h>
+#include <actionlib/server/action_server.h>
 
 //needed for setting navigation goals
 //typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
@@ -20,14 +19,30 @@ int main(int argc, char** argv){
     return 0;
 }
 
-void RobotControl::TaskServerCallback_(const robot_control::RobotTaskGoalConstPtr &goal)
+void RobotControl::TaskServerGoalCallback_(TaskServer_::GoalHandle gh)
 {
   ROS_INFO("WOHO - A new Goal");
-  TaskServerResult_.result.end_result = "woho";
+  current_gh_ = gh;
+  current_gh_.setAccepted();
+  goal_ = *current_gh_.getGoal();
+  //ROS_INFO("GoalCB goal has now the following name %s",TaskServer_.current_goal_.getGoal()->task_name);
+  //ROS_INFO("Now preempting the goal");
+  //TaskServer_.setPreempted();
   //TaskServer_->setSucceeded(TaskServerResult_);
+//  ros::Rate r(0.2);
+//  r.sleep();
+//  r.sleep();
+  //TaskServer_.setAborted();
 }
 
-void RobotControl::connectionCallback(const database_binding::DatabaseConnection &state)
+void RobotControl::TaskServerPreemptCallback_(TaskServer_::GoalHandle gh)
+{
+  //TaskServer_.setPreempted();
+  ROS_INFO("Suceeded");
+  current_gh_.setSucceeded();
+}
+
+void RobotControl::connectionCallback_(const database_binding::DatabaseConnection &state)
 {
   if (state.connection == 0)
   {
@@ -91,18 +106,24 @@ void RobotControl::buttonCallback(const kobuki_msgs::ButtonEvent button) {
 }
 
 RobotControl::RobotControl(std::string name) :
-  TaskServer_ (n_,name,boost::bind(&RobotControl::TaskServerCallback_, this, _1),false),
-  TaskClient_ ("robot_control",true)
+  TaskServer_ (n_,name,false),
+  TaskClient_ (name)
 
 {
-    //initializing variables
     //actionserver
-      //    TaskServer_->registerGoalCallback(boost::bind(&RobotControl::TaskServerGoalCallback_, this));
-//    TaskServer_->registerPreemptCallback(boost::bind(&RobotControl::TaskServerGoalCallback,this));
+    TaskServer_.registerGoalCallback(boost::bind(&RobotControl::TaskServerGoalCallback_, this, _1));
+    TaskServer_.registerCancelCallback(boost::bind(&RobotControl::TaskServerPreemptCallback_,this, _1));
+    TaskServer_.start();
+    //actionclient
+//    if (!TaskClient_.waitForActionServerToStart(ros::Duration(15)));
+//    {
+//        ROS_ERROR("Our taskserver took too long to come up. Something is wrong");
+//    }
+   // TaskServer_->registerPreemptCallback(boost::bind(&RobotControl::TaskServerGoalCallback,this));
 //    subTaskTopic_ = n_.subscribe("/robot_control/task_server",1,&RobotControl::TaskServerAnalysisCallback,this);
     //database
     db_connect_ = robot_control::notConnected;
-    connection_state_sub_ = n_.subscribe("/database_binding/connection_status", 10, &RobotControl::connectionCallback, this);
+    connection_state_sub_ = n_.subscribe("/database_binding/connection_status", 10, &RobotControl::connectionCallback_, this);
     // initialize kobuki_base with buttons, leds and sounds
     led1_pub = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led1",10);
     led2_pub_ = n_.advertise<kobuki_msgs::Led>("/mobile_base/commands/led2",10);
@@ -126,8 +147,23 @@ RobotControl::RobotControl(std::string name) :
 
 int RobotControl::run()
 {
-  ROS_INFO("RobotControl started running");
-  ros::Rate r(10);
+  unsigned int run_rate = 1;
+  ros::Rate r(run_rate);
+  ROS_INFO("RobotControl started running at a rate of %i Hz",run_rate);
+
+  ROS_INFO("Action server started, sending goal.");
+  // send a goal to the action
+  robot_control::RobotTaskGoal goal;
+  goal.priority = 100;
+  goal.task_id = 1;
+  goal.task_name = "test";
+
+
+
+  TaskClient_.sendGoal(goal);
+
+  int rounds = 0;
+
   while (ros::ok())
   {
     //do self localization if button0 is pressed
@@ -139,6 +175,23 @@ int RobotControl::run()
 //      //TODO: it shouldn't block the main-loop
 //      fullTurn();
 //    }
+
+      //taskserver tests
+
+      ROS_INFO("We're active at round %i",rounds);
+      rounds++;
+      if (rounds == 5)
+        {
+          TaskServerResult_.header.stamp = ros::Time::now();
+          current_gh_.setSucceeded();
+        }
+      if (rounds == 3)
+        {
+          current_gh_.setAborted();
+          rounds++;
+        }
+
+
       if ((ros::Time::now()-db_connect_last_update.data).toSec() > 30)
         {
           db_connect_ = robot_control::notConnected;
@@ -151,6 +204,19 @@ int RobotControl::run()
           led2_.value = led2_.ORANGE;
           led2_pub_.publish(led2_);
         }
+      if (current_gh_.isValid())
+        {
+          std::string status = current_gh_.getGoalStatus().text.c_str();
+          ROS_INFO("Our goals state is %s",status.c_str());
+        }
+//    if (TaskClient_.getState() == actionlib_msgs::GoalStatus.PENDING)
+//    {
+//      ROS_INFO ("Our goals state is pending");
+//    }
+//    else if (TaskClient_.getState() == actionlib_msgs::GoalStatus.ACTIVE)
+//    {
+//      ROS_INFO("Our goals state is active");
+//    }
     ros::spinOnce();
     r.sleep();
   }
@@ -178,6 +244,7 @@ int RobotControl::fullTurn()
     ROS_INFO("Sending goal nr %i",i+1);
     ac_.sendGoal(goal_);
     ac_.waitForResult();
+    //sleep because AMCL needed some computation time
     ros::Duration(7).sleep();
   }
 //  ROS_INFO("Waiting for results");
