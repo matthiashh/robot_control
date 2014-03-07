@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
   genmsg
   actionlib_msgs
+  sql_database
+  human_interface
 )
 
 ## System dependencies are found with CMake's conventions
@@ -50,11 +52,11 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
+ add_message_files(
+   FILES
+   RegisterTaskServer.msg
 #   Message2.msg
-# )
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -74,7 +76,7 @@ find_package(catkin REQUIRED COMPONENTS
  generate_messages(
    DEPENDENCIES
 #   std_msgs
-  actionlib_msgs
+   actionlib_msgs
  )
 
 ###################################
@@ -87,7 +89,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES robot_control
 #  CATKIN_DEPENDS roscpp std_msgs std_srvs
 #  DEPENDS system_lib
@@ -101,25 +103,37 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
-# add_library(robot_control
-#   src/${PROJECT_NAME}/robot_control.cpp
-# )
+ add_library(robot_control_simple_client
+    src/RobotControlSimpleClient.cpp
+#   src/${PROJECT_NAME}/<robot_control.cpp
+ )
 
 ## Declare a cpp executable
 add_executable(robot_control_node src/robot_control.cpp)
+add_executable(say_sentence src/say_sentence.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(robot_control_node robot_control_generate_messages_cpp)
+add_dependencies(robot_control_simple_client actionlib)
+add_dependencies(say_sentence human_interface robot_control_simple_client)
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(robot_control_node
+   postgresql_database
    ${catkin_LIBRARIES}
  )
+target_link_libraries(robot_control_simple_client
+ ${catkin_LIBRARIES})
+target_link_libraries(
+say_sentence
+robot_control_simple_client
+ ${catkin_LIBRARIES})
 
 #############
 ## Install ##
