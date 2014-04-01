@@ -1,12 +1,16 @@
-# Define the task
+# A unique task-id
 uint32 task_id
+# Refering to the type of task
 string task_name
-uint32 priority
+# A priority between 0 and 10
+uint8 priority
 ---
-# Define the result
+# the result
 bool success
+# a string for debugging
 string end_result
 ---
-# Define a feedback message
+# A feedback - is individually implemented by each module
 uint8 percentage
+# a string for debugging
 string intermediate_result

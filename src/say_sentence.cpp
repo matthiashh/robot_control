@@ -33,12 +33,14 @@ void say::run()
     if (goal_active_)
     {
       human_interface::SpeechRequest req;
-      req.text_to_say = "Yeah - it worked";
+      req.text_to_say = "Yeah - it worked. We're at goal ";
+      int id = (*task_goal_.getGoal()).task_id;
+      req.text_to_say += boost::lexical_cast<std::string>(id);
       pub_speech_.publish(req);
       result_.success = true;
       result_.end_result = "Everything worked";
       ros::Duration(5).sleep();
-      task_goal_->setSucceeded(result_,"Everything worked");
+      task_goal_.setSucceeded(result_,"Everything worked");
       goal_active_ = false;
     }
     r.sleep();

@@ -69,10 +69,10 @@ void RobotControlSimpleClient::TaskServerGoalCallback(_task_server::GoalHandle g
   if (goal_active_)
     {
       cleanupCancelledGoal(result_);
-      task_goal_->setAborted(result_,"Preempted by another goal");
+      task_goal_.setAborted(result_,"Preempted by another goal");
     }
-    task_goal_ = &gh;
-    task_goal_->setAccepted();
+    task_goal_ = gh;
+    task_goal_.setAccepted("Accepted this goal");
     goal_active_ = true;
   }
   else
@@ -88,7 +88,7 @@ void RobotControlSimpleClient::spinServer()
 
 void RobotControlSimpleClient::TaskServerCancelCallback(_task_server::GoalHandle gh)
 {
-  task_goal_->setCanceled();
+  task_goal_.setCanceled();
   goal_active_ = false;
 }
 
