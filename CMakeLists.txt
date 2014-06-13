@@ -119,7 +119,7 @@ add_executable(say_sentence src/say_sentence.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(robot_control_node robot_control_generate_messages_cpp)
+add_dependencies(robot_control_node robot_control_generate_messages_cpp)
 add_dependencies(robot_control_simple_client actionlib)
 add_dependencies(say_sentence human_interface robot_control_simple_client)
 
